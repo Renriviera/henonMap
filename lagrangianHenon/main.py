@@ -7,34 +7,34 @@ import sklearn as skl
 from skopt import gp_minimize
 from mpmath import *
 
-mp.dps = 30
+mp.dps = 30 ## sets floating point precision
 
-def hMap(a, b, x, y):
+def hMap(a, b, x, y): ### henon map dynamical system
     return 1 - a * x ** 2 + b * y
 
 
 # −b−1(1 − ayn2 − bxn)
-def backwards_hMap(a, b, x, y):
+def backwards_hMap(a, b, x, y): ### inverse function for the henon map, backwards evolution of the system
     return -(1 / b) * (1 - a * y ** 2 - x)
 
 
-def getPeriodic(a, b):
+def getPeriodic(a, b): ###
     p1 = (-1 * (1 - b) + np.sqrt((1 - b) ** 2 + 4 * a)) / (2 * a)
     p2 = (-1 * (1 - b) - np.sqrt((1 - b) ** 2 + 4 * a)) / (2 * a)
     return p1, p2
 
 
-def getUnstableLin(a, b, x):
+def getUnstableLin(a, b, x): ### stable
     evecUn = [-a * x + np.sqrt(b + a ** 2 * x ** 2), 1]
     return evecUn
 
 
-def getStableLin(a, b, x):
+def getStableLin(a, b, x): ### unstable
     evecSt = [-a * x - np.sqrt(b + a ** 2 * x ** 2), 1]
     return evecSt
 
 
-def eigvalue(a, b, x):
+def eigvalue(a, b, x): ### eigenvalues for henon map
     A = np.array([[-2 * a * x, b], [1, 0]])
     results = la.eig(A)
     return results[0]
@@ -46,13 +46,13 @@ def paraboloid(x,y):
 def testline(x):
     return 4
 
-def pointsFit(a, b, N):
+def pointsFit(a, b, N): ### this function finds the best points to use for
     density = 10000
     density1 = 10
     rho = 0.2
     p1, p2 = getPeriodic(a, b)
     p = p2
-    ############ for stable  #############
+    ############ for stable manifold  #############
     eigstable = eigvalue(a, b, p)[0].real
     left_cut_b = 0
     if b > -0.32:
@@ -118,11 +118,8 @@ def pointsFit(a, b, N):
     lxNewb = [float(xNew_b1[k]) for k in range(density1)]#####
     lyNewb = [float(yNew_b1[k]) for k in range(density1)]#####
 
-    # model1 = np.poly1d(np.polyfit(lxNewb, lyNewb, 1))
-    # lmodel1 = list(model1.c)
-    # coef1 = ["al", "bl"]
-    # result1 = dict(zip(coef1, lmodel1))
-    ############################# for unstable ##################################
+
+    ############################# for unstable manifold ##################################
     eigunstable = eigvalue(a, b, p)[1].real
     rightcut17 = 2.5 * 10 ** -(7)
     left_cut = 0
@@ -176,15 +173,7 @@ def pointsFit(a, b, N):
     quadxNew = list(xNew1)
     quadyNew = list(yNew1)
     return lxNewb, lyNewb, quadxNew, quadyNew
-    # model = np.poly1d(np.polyfit(quadyNew, quadxNew, 2))
-    # lmodel = list(model.c)
-    # coef = ["aq", "bq", "cq"]
-    # result = dict(zip(coef, lmodel))
-    # # result["aq"] is my coefficient
-    # y1 = ((1 / result1["al"]) - result["bq"]) / (2 * result["aq"])
-    # x1 = result["aq"] * y1 ** 2 + result["bq"] * y1 + result["cq"]
-    # x2 = (1 / result1["al"]) * y1 - result1["bl"] / result1["al"]
-    # return (x1 - x2)
+
 
 #######Test Lagrangian works##########
 toler = 0.01
@@ -197,8 +186,9 @@ parabolicPointsY =[testpoly(parabolicPointsX[i]+noisePara[i]) for i in range(len
 linearPointsY = [testline(linearPointsX[i]+noiseLine[i]) for i in range(len(linearPointsX))]
 # print(linearPointsY)
 # print(parabolicPointsY)
+
 #####################################
-def findpar(xspace,yspace,deltaa):### give yellow part
+def findpar(xspace,yspace,deltaa):### gives parabolic component
     a = 1.07905729
     nxi = xspace
     nyi = yspace
@@ -218,7 +208,7 @@ def findpar(xspace,yspace,deltaa):### give yellow part
             xpoint.append(nxNew[i])
     return xpoint,ypoint
 
-def findpar2(xspace,yspace,deltaa,M):### give yellow part
+def findpar2(xspace,yspace,deltaa,M):### approximated version of above function, gives parabolic component
     a = 1.07905729
     b = -0.4
     nxi = xspace
@@ -247,6 +237,9 @@ print(xUnstable,yUnstable,'unstable manifold')
 
 
 def lagrangian(params):
+    ### minimizing this lagrangian gives the parameters that will correspond to the newhouse phenomenon,
+    ### that is a specific tangency condition(derivative at that point equivalent) between the parabolic and linear approx
+    ### corresponding to the unstable and stable part of the manifold
     a,b,c,d,e = params
     linearFit = 0
     parabolicFit = 0
@@ -263,6 +256,7 @@ res = opti.minimize(lagrangian,x0)
 tangencyY = (res.x[0]-res.x[3])/(2*res.x[2])
 tangencyX = res.x[2]*tangencyY**2+res.x[3]*tangencyY+res.x[4]
 def initialPosition(params):
+    ### determines the best initial position for lagrangian by iterating a perpendicular line of points through the henon map
     points = 10000
     a = params
     perpSlope = -1/res.x[0]
@@ -285,34 +279,10 @@ def initialPosition(params):
         distancesSquare[i] = np.sqrt((xVals[i]-xi[i])**2+(yVals[i]-yi[i])**2)
 
     return np.min(distancesSquare)
-# initialBounds = ((1.07905729-0.2,1.07905729+0.2))
-# initialRes = opti.minimize(initialPosition,[1.07905729],bounds= initialBounds, tol=1e-6)
-# points = 10000
-# perpSlope = -1/res.x[0]
-# perpInter = tangencyX - (perpSlope*tangencyY)
-# yVals = np.linspace(tangencyY-2, tangencyY+2,points)
-# xVals = np.zeros(points)
-# distancesSquare = np.zeros(points)
-# for i in range(points):
-#     xVals[i] = perpSlope * yVals[i] + perpInter
-# xi = xVals
-# yi = yVals
-# for i in range(4):
-#     xOld = xi
-#     yOld = yi
-#     yNew = xOld
-#     xNew = [hMap(initialRes.x[0], -0.4, xOld[j], yOld[j]) for j in range(len(xi))]  ### iterate perpendicular through henon
-#     xi = xNew
-#     yi = yNew
-# for i in range(points):
-#     distancesSquare[i] = (xVals[i]-xi[i])**2+(yVals[i]-yi[i])**2
-# temporary = np.min(distancesSquare)
-# indexPoint = np.where(distancesSquare == temporary)[0][0]
-# initialPointFinal = [xVals[indexPoint],yVals[indexPoint]]
-# print('RUIPENG',initialPosition(1.07905729-0.1))
-# print('initial points', initialRes)
-# print('answer', initialPointFinal)
+
 def firstPosition(alpha):
+    ### determines the best initial position for the lagrangian by iterating a line of points and then using a quadratic approximation of the resulting point cloud.
+    ### this sacrifices accuracy for precision
     perpSlope = -1 / res.x[0]
     perpInter = tangencyX - (perpSlope * tangencyY)
     yVals = np.linspace(tangencyY - 0.5, tangencyY + 0.5, 5000)
@@ -398,8 +368,8 @@ def lagrangianUnfold(params):
 
     return ((xFinal1-xFinal2)**2 + (xj - (midTangent)/2)**2 + (yj - yDer)**2 + np.trace(finalMatrix))**2##+(pX-midTangent)**2+(pY-yDer)**2)
 
-# foldBounds = ((-0.015,0.015),(res.x[0]-0.05,res.x[0]+0.05),(res.x[1]-0.05, res.x[1]+0.05))
-# unfoldRes = opti.differential_evolution(lagrangianUnfold, bounds=foldBounds)
+#### below calculations use the above functions to find and plot different parts of the manifold and isolate the attractors we are interested in.
+
 foldBounds = ((-0.1,0.1),(None,None),(None, None),(firstPosition(0.01)[0]-0.5,firstPosition(0.01)[0]+0.5),(firstPosition(0.01)[1]-0.5,firstPosition(0.01)[1]+0.5))
 unfoldRes = opti.minimize(lagrangianUnfold,[0.01,res.x[0]-0.05, res.x[1]-0.05, firstPosition(0.01)[0], firstPosition(0.01)[1]], tol= 0.00000001, bounds=foldBounds) ###1.4750747449285, -0.0197361664572
 print(unfoldRes)
@@ -421,8 +391,7 @@ for i in range(100):
     lineX[i] = res.x[0]*yVals[i]+res.x[1]
     perplineX[i] = perpSlope*yperpVals[i] + perpInter
     lineXr[i] =  unfoldRes.x[1]* yVals[i] + unfoldRes.x[2]
-    # lineX[i] = -0.1380877 * yVals[i] + 1.62805374
-    # perplineX[i] = 7.241774459667905 * yperpVals[i] + 1.7798521830140956
+
 
 xi = perplineX
 yi = yperpVals
@@ -441,9 +410,7 @@ result1 = dict(zip(coef1, lmodel1))
 yDer = (unfoldRes.x[1]-result1["d"])/2*result1["c"]
 xFinal1 = unfoldRes.x[1]*yDer+unfoldRes.x[2]
 xFinal2 = result1["c"]*yDer**2+result1["d"]*yDer+result1["e"]
-    # vertexY = -1*result1["d"]/2*result1["c"]
-    # vertexX = result1["c"]*vertexY**2+result1["d"]*vertexY+result1["e"]
-    # originalY = (vertexX - b)/a
+
 xj = xFinal2
 yj = yDer
 pXj = unfoldRes.x[3]
